@@ -3,8 +3,10 @@ const colors = require("colors");
 const morgan = require("morgan");
 const connectDB = require("./config/db");
 const { config } = require("./config/config");
-const authRouter = require("./routes/auth");
 const { errorHandler } = require("./middleware/error");
+
+//
+const authRouter = require("./routes/auth");
 const usersRouter = require("./routes/users");
 
 const app = express();
