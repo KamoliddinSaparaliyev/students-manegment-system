@@ -5,6 +5,56 @@ const { sign } = require("jsonwebtoken");
 const { config } = require("../config/config");
 const { geocoder } = require("../utils/geocoder");
 
+const StuffSchema = new mongoose.Schema({
+  lastLoginTime: {
+    type: Date,
+    default: null,
+  },
+});
+
+const StudentSchema = new mongoose.Schema({
+  age: {
+    type: Number,
+    required: [true, "Please add an age"],
+    validate: {
+      validator: function (v) {
+        return v.toString().length === 2;
+      },
+      message: "Please enter a correct age!",
+    },
+  },
+  gender: {
+    type: String,
+    required: false,
+    default: "choose",
+    enum: ["male", "female", "choose"],
+  },
+  address: {
+    type: String,
+    required: [true, "Please add an address"],
+  },
+  location: {
+    type: {
+      type: String,
+      enum: ["Point"],
+    },
+    coordinates: {
+      type: [Number],
+      index: "2dsphere",
+    },
+    formattedAddress: String,
+    street: String,
+    city: String,
+    state: String,
+    zipcode: String,
+    country: String,
+  },
+  isVerified: {
+    type: Boolean,
+    default: false,
+  },
+});
+
 const UserSchema = new mongoose.Schema(
   {
     name: {
@@ -12,30 +62,31 @@ const UserSchema = new mongoose.Schema(
       required: [true, "Please add a name"],
       maxlength: 100,
     },
+    username: {
+      type: String,
+      required: [true, "Please provide a username"],
+      lowercase: true,
+      unique: true,
+      trim: true,
+      minlength: [4, "Username must be at least 4 characters long"],
+      maxlength: [20, "Username cannot exceed 20 characters"],
+    },
     email: {
       type: String,
-      required: [true, "Please add a email"],
+      required: [true, "Please provide an email"],
       unique: true,
+      trim: true,
+      lowercase: true,
       match: [
         /^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-]+)(\.[a-zA-Z]{2,5}){1,2}$/,
-        "Please add a valid emil",
+        "Please provide a valid email address",
       ],
     },
     password: {
       type: String,
-      required: [true, "Please add a password"],
-      minlenght: 6,
+      required: [true, "Please provide a password"],
+      minlength: [6, "Password must be at least 6 characters long"],
       select: false,
-    },
-    age: {
-      type: Number,
-      required: [true, "Please add a age"],
-      validate: {
-        validator: function (v) {
-          return v.toString().length === 2;
-        },
-        message: "Please, enter a correct age!",
-      },
     },
     phoneNumber: {
       type: Number,
@@ -45,42 +96,24 @@ const UserSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["student", "teacher", "assistance", "customer"],
+      enum: ["admin", "teacher", "student", "designer", "support"],
       default: "student",
-    },
-    gender: {
-      type: String,
-      required: false,
-      default: "Choose",
-      enum: ["male", "female", "Choose"],
     },
     photo: {
       type: String,
       default: "no-photo.jpg",
     },
-    address: {
-      type: String,
-      required: [true, "Please add a address"],
-    },
-    location: {
-      type: {
-        type: String,
-        enum: ["Point"],
+    student: {
+      type: StudentSchema,
+      validate: function () {
+        return this.role === "student";
       },
-      coordinates: {
-        type: [Number],
-        index: "2dsphere",
-      },
-      formattedAddress: String,
-      street: String,
-      city: String,
-      state: String,
-      zipcode: String,
-      country: String,
     },
-    isVerified: {
-      type: Boolean,
-      default: false,
+    staff: {
+      type: StuffSchema,
+      required: function () {
+        return this.role !== "student";
+      },
     },
     resetPasswordToken: String,
     resetPasswordExpire: Date,
@@ -95,24 +128,11 @@ const UserSchema = new mongoose.Schema(
 
 // Hashing password
 UserSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) next();
+  if (!this.isModified("password")) return next();
 
   const salt = await genSalt(10);
-
   this.password = await hash(this.password, salt);
 });
-
-// Sign JWT token and return
-UserSchema.methods.getSignedJwtToken = function () {
-  return sign({ user: { id: this._id } }, config.jwt.secret, {
-    expiresIn: config.jwt.expire,
-  });
-};
-
-// Compare password
-UserSchema.methods.matchPassword = async function (enteredPassword) {
-  return await compare(enteredPassword, this.password);
-};
 
 // Assuming UserSchema is defined correctly...
 UserSchema.methods.getResetPasswordToken = function () {
@@ -133,23 +153,39 @@ UserSchema.methods.getResetPasswordToken = function () {
   return resetToken;
 };
 
-//Geocode & location field
-UserSchema.pre("save", async function (next) {
-  const loc = await geocoder.geocode(this.address);
+// Sign JWT token and return
+UserSchema.methods.getSignedJwtToken = function () {
+  return sign({ user: { id: this._id } }, config.jwt.secret, {
+    expiresIn: config.jwt.expire,
+  });
+};
 
-  this.location = {
-    type: "Point",
-    coordinates: [loc[0].longitude, loc[0].latitude],
-    formattedAddress: loc[0].formattedAddress,
-    street: loc[0].streetName,
-    city: loc[0].city,
-    state: loc[0].stateCode,
-    zipcode: loc[0].zipcode,
-    country: loc[0].countryCode,
-  };
+// Compare password
+UserSchema.methods.matchPassword = async function (enteredPassword) {
+  return await compare(enteredPassword, this.password);
+};
 
-  this.address = undefined;
-  next();
+// Geocode & location field
+StudentSchema.pre("save", async function (next) {
+  if (!this.isModified("address")) return next();
+
+  try {
+    const loc = await geocoder.geocode(this.address);
+    this.location = {
+      type: "Point",
+      coordinates: [loc[0].longitude, loc[0].latitude],
+      formattedAddress: loc[0].formattedAddress,
+      street: loc[0].streetName,
+      city: loc[0].city,
+      state: loc[0].stateCode,
+      zipcode: loc[0].zipcode,
+      country: loc[0].countryCode,
+    };
+    this.address = undefined;
+    next();
+  } catch (err) {
+    next(err);
+  }
 });
 
 const User = mongoose.model("User", UserSchema);
