@@ -6,26 +6,26 @@ const { ErrorResponse } = require("./errorResponse");
  * @param {{ body: Joi.Schema, params: Joi.Schema, query: Joi.Schema }} schema
  * @returns
  */
-const httpValidator = ({ body, params, query }, schema) => {
+const httpValidator = ({ body, params, query }, schema, next) => {
   // Destructure schema objects
   const { body: bodySchema, params: paramsSchema, query: querySchema } = schema;
 
   // Validate request body
   if (body) {
     const { error } = bodySchema.validate(body);
-    if (error) throw new ErrorResponse(error, 400);
+    if (error) return next(error);
   }
 
   // Validate request params
   if (params) {
     const { error } = paramsSchema.validate(params);
-    if (error) throw new ErrorResponse(error, 400);
+    if (error) return next(error);
   }
 
   // Validate query parameters
   if (query) {
     const { error } = querySchema.validate(query);
-    if (error) throw new ErrorResponse(error, 400);
+    if (error) return next(error);
   }
 };
 

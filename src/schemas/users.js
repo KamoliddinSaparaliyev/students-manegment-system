@@ -4,25 +4,25 @@ const { idValid } = require("./schema");
 const postUserSchema = {
   body: Joi.object({
     name: Joi.string().required().max(100),
-    email: Joi.string()
-      .pattern(
-        new RegExp(
-          /^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-]+)(\.[a-zA-Z]{2,5}){1,2}$/
-        )
-      )
-      .required()
-      .messages({
-        "string.pattern.base": "Please enter a valid email address",
-        "string.empty": "Email is required",
-      }),
-    age: Joi.number().required().min(10),
+    username: Joi.string().required().lowercase().min(4).max(20),
+    email: Joi.string().required().email(),
     password: Joi.string().required().min(6),
-    phoneNumber: Joi.number().required().max(1000).precision(15),
+    phoneNumber: Joi.number().required(),
+    bornDate: Joi.date().required(),
+    gender: Joi.string().required().valid("male", "female"),
+    address: Joi.string().required(),
     role: Joi.string()
       .valid("student", "teacher", "assistance", "customer")
       .default("student"),
-    gender: Joi.string().valid("male", "female"),
-    address: Joi.string().required(),
+    student: Joi.object({
+      course: Joi.string().required(),
+      group: Joi.string().required(),
+      isVerified: Joi.boolean().default(true),
+    }).when("role", { is: "student", then: Joi.required() }),
+    staff: Joi.object({
+      position: Joi.string().required(),
+      department: Joi.string().required(),
+    }).when("role", { not: "student", then: Joi.required() }),
   }),
 };
 
@@ -38,23 +38,24 @@ const updateUserSchema = {
   ...idValid,
   body: Joi.object({
     name: Joi.string().max(100),
-    email: Joi.string()
-      .pattern(
-        new RegExp(
-          /^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-]+)(\.[a-zA-Z]{2,5}){1,2}$/
-        )
-      )
-
-      .messages({
-        "string.pattern.base": "Please enter a valid email address",
-        "string.empty": "Email is required",
-      }),
-    phoneNumber: Joi.number().max(999999999999999).precision(15),
-    age: Joi.number().min(10),
-    password: Joi.string().min(6),
+    username: Joi.string().lowercase().min(4).max(20),
+    email: Joi.string().email(),
+    phoneNumber: Joi.string().max(15),
+    bornDate: Joi.date(),
     gender: Joi.string().valid("male", "female"),
     address: Joi.string(),
-    role: Joi.string().valid("student", "teacher", "assistance", "customer"),
+    role: Joi.string()
+      .valid("student", "teacher", "assistance", "customer")
+      .default("student"),
+    student: Joi.object({
+      course: Joi.string(),
+      group: Joi.string(),
+      isVerified: Joi.boolean().default(false),
+    }).when("role", { is: "student", then: Joi.required() }),
+    staff: Joi.object({
+      position: Joi.string(),
+      department: Joi.string(),
+    }).when("role", { not: "student", then: Joi.required() }),
   }),
 };
 

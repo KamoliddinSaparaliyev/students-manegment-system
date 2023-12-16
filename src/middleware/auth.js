@@ -31,8 +31,11 @@ exports.protect = asyncHandler(async (req, res, next) => {
     const user = await User.findById(decoded.user.id);
 
     // Check if user exists
-    if (!user || !user.isVerified)
-      throw new ErrorResponse("User not found", 404);
+    if (!user) throw new ErrorResponse("User not found", 404);
+
+    // Check Student Verify
+    if (user.role === "student" && !user.student.isVerified)
+      throw new ErrorResponse("Your account not verified", 403);
 
     // Set user in request object for use in subsequent middleware
     req.user = user;

@@ -20,7 +20,7 @@ const {
  * @access Public
  */
 exports.register = asyncHandler(async (req, res, next) => {
-  httpValidator({ body: req.body }, postUserSchema);
+  httpValidator({ body: req.body }, postUserSchema, next);
 
   const user = await User.create(req.body);
 
@@ -35,7 +35,7 @@ exports.register = asyncHandler(async (req, res, next) => {
  * @access Public
  */
 exports.login = asyncHandler(async (req, res, next) => {
-  httpValidator({ body: req.body }, loginUserSchema);
+  httpValidator({ body: req.body }, loginUserSchema, next);
 
   const { email, password } = req.body;
 
@@ -49,7 +49,7 @@ exports.login = asyncHandler(async (req, res, next) => {
 
   if (!isMatch) throw new ErrorResponse("Invalid credebtials", 401);
 
-  sendTokenResponse(user, 200, res);
+  await sendTokenResponse(user, 200, res);
 });
 
 /**
@@ -81,7 +81,7 @@ exports.getMe = asyncHandler(async (req, res, next) => {
  * @access Public
  */
 exports.forgetPassword = asyncHandler(async (req, res, next) => {
-  httpValidator({ body: req.body }, forgetPasswordSchema);
+  httpValidator({ body: req.body }, forgetPasswordSchema, next);
 
   const { email } = req.body;
 
@@ -128,7 +128,7 @@ exports.forgetPassword = asyncHandler(async (req, res, next) => {
  * @access Public
  */
 exports.resetPassword = asyncHandler(async (req, res, next) => {
-  httpValidator({ params: req.params }, resetPasswordSchema);
+  httpValidator({ params: req.params }, resetPasswordSchema, next);
 
   const { resettoken } = req.params;
 
@@ -154,7 +154,7 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
   user.resetPasswordToken = undefined;
   await user.save();
 
-  sendTokenResponse(user, 200, res);
+  await sendTokenResponse(user, 200, res);
 });
 
 /**
@@ -163,7 +163,7 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
  * @access Private
  */
 exports.updateDetails = asyncHandler(async (req, res, next) => {
-  httpValidator({ body: req.body }, updateUserSchema);
+  httpValidator({ body: req.body }, updateUserSchema, next);
 
   const user = await User.findByIdAndUpdate(req.user.id, req.body, {
     new: true,
@@ -179,7 +179,7 @@ exports.updateDetails = asyncHandler(async (req, res, next) => {
  * @access Private
  */
 exports.updatePassword = asyncHandler(async (req, res, next) => {
-  httpValidator({ body: req.body }, updatePasswordSchema);
+  httpValidator({ body: req.body }, updatePasswordSchema, next);
 
   const { currentPassword, newPassword } = req.body;
 
@@ -193,16 +193,22 @@ exports.updatePassword = asyncHandler(async (req, res, next) => {
 
   await user.save();
 
-  sendTokenResponse(user, 200, res);
+  await sendTokenResponse(user, 200, res);
 });
 
 // Set cookies on response
-const sendTokenResponse = (user, statusCode, res) => {
+const sendTokenResponse = async (user, statusCode, res) => {
   const token = user.getSignedJwtToken();
 
   const currentDate = new Date();
   const cookieExpiration = config.jwt.cookie_expire * 24 * 60 * 60 * 1000;
   const futureDate = new Date(currentDate.getTime() + cookieExpiration);
+
+  if (user.role !== "student") {
+    user.staff.lastLoginTime = currentDate;
+
+    await user.save({ validateBeforeSave: false });
+  }
 
   const cookieOptions = {
     expires: futureDate,

@@ -10,44 +10,28 @@ const StuffSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  position: {
+    type: String,
+    required: [true, "Please enter a position"],
+    maxlength: [200, "Please enter a maximum of 200 characters"],
+  },
+  department: {
+    type: String,
+    required: [true, "Please enter a department"],
+    maxlength: [200, "Please enter a maximum of 200 characters"],
+  },
 });
 
 const StudentSchema = new mongoose.Schema({
-  age: {
-    type: Number,
-    required: [true, "Please add an age"],
-    validate: {
-      validator: function (v) {
-        return v.toString().length === 2;
-      },
-      message: "Please enter a correct age!",
-    },
+  course: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Course",
+    required: [true, "Please add a course"],
   },
-  gender: {
-    type: String,
-    required: false,
-    default: "choose",
-    enum: ["male", "female", "choose"],
-  },
-  address: {
-    type: String,
-    required: [true, "Please add an address"],
-  },
-  location: {
-    type: {
-      type: String,
-      enum: ["Point"],
-    },
-    coordinates: {
-      type: [Number],
-      index: "2dsphere",
-    },
-    formattedAddress: String,
-    street: String,
-    city: String,
-    state: String,
-    zipcode: String,
-    country: String,
+  group: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Group",
+    required: [true, "Please add a group"],
   },
   isVerified: {
     type: Boolean,
@@ -91,12 +75,40 @@ const UserSchema = new mongoose.Schema(
     phoneNumber: {
       type: Number,
       unique: true,
-      maxlength: 15,
       required: [true, "Please add a phone number"],
+    },
+    bornDate: {
+      type: Date,
+      required: [true, "Please add an time of birth"],
+    },
+    gender: {
+      type: String,
+      required: true,
+      enum: ["male", "female"],
+    },
+    address: {
+      type: String,
+      required: [true, "Please add an address"],
+    },
+    location: {
+      type: {
+        type: String,
+        enum: ["Point"],
+      },
+      coordinates: {
+        type: [Number],
+        index: "2dsphere",
+      },
+      formattedAddress: String,
+      street: String,
+      city: String,
+      state: String,
+      zipcode: String,
+      country: String,
     },
     role: {
       type: String,
-      enum: ["admin", "teacher", "student", "designer", "support"],
+      enum: ["student", "teacher", "assistance", "customer"],
       default: "student",
     },
     photo: {
@@ -160,13 +172,13 @@ UserSchema.methods.getSignedJwtToken = function () {
   });
 };
 
-// Compare password
+// Match password
 UserSchema.methods.matchPassword = async function (enteredPassword) {
   return await compare(enteredPassword, this.password);
 };
 
 // Geocode & location field
-StudentSchema.pre("save", async function (next) {
+UserSchema.pre("save", async function (next) {
   if (!this.isModified("address")) return next();
 
   try {

@@ -1,35 +1,18 @@
 [
   {
-    "_id": "6571c691ea0b654f3354321a",
-    "name": "Eve Williams",
-    "email": "eve@example.com",
-    "password": "password123",
-    "phoneNumber": 5555555555,
-    "age": 25,
-    "address": "456 Oak St",
-    "role": "customer",
-    "gender": "female"
-  },
-  {
-    "_id": "6571c691ea0b654f33543217",
-    "name": "Jone Doe",
-    "email": "admin@gmail.com",
-    "password": "password123",
+    "name": "Jone",
+    "username": "jone",
+    "email": "admin@example.com",
+    "password": "password456",
     "phoneNumber": 9876543210,
-    "address": "789 Elm St",
-    "age": 21,
-    "role": "customer",
-    "gender": "male"
-  },
-  {
-    "_id": "6571c691ea0b654f33543219",
-    "name": "Bob Johnson",
-    "email": "bob@example.com",
-    "password": "password123",
-    "phoneNumber": 1231231234,
-    "age": 34,
-    "address": "101 Pine St",
-    "role": "student",
-    "gender": "male"
+    "bornDate": "1985-05-05",
+    "gender": "male",
+    "address": "456 Oak St, Townsville, USA",
+    "role": "teacher",
+    "staff": {
+      "lastLoginTime": null,
+      "position": "Math Teacher",
+      "department": "Math Department"
+    }
   }
 ]

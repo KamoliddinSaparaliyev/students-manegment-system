@@ -4,7 +4,7 @@ const errorHandler = (err, req, res, next) => {
   let error = { ...err }; // Create a shallow copy of the error object
 
   if (process.env.NODE_ENV === "development") {
-    console.error(err.stack.red); // Log the original error for debugging
+    console.error(err.stack.red); // Log the modified error for debugging
   }
 
   error.message = err.message; // Preserve the original error message
@@ -15,7 +15,16 @@ const errorHandler = (err, req, res, next) => {
   } else if (err.code === 11000) {
     error = new ErrorResponse("Duplicate field entered", 400);
   } else if (err.name === "ValidationError") {
-    const messages = Object.values(err.errors).map((e) => e.message);
+    let messages;
+    if (err.details && err.details.length > 0) {
+      messages = Object.values(err.details)
+        .map((e) => e.message.replace(/"/g, ""))
+        .join(", ");
+    } else if (err.errors && err.errors.length > 0) {
+      messages = Object.values(err.errors)
+        .map((e) => e.message)
+        .join(", ");
+    }
     error = new ErrorResponse(messages, 400);
   } else if (err.name === "JsonWebTokenError") {
     error = new ErrorResponse("Invalid token", 401);
